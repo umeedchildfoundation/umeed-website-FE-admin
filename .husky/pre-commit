@@ -1,0 +1,44 @@
+#!/usr/bin/env sh
+set -e
+
+echo '🏗️👷 Styling, testing and building your project before committing'
+
+# Check Prettier Standards
+npm run prettify ||
+(
+    echo '🤢🤮🤢🤮 Your styling looks disgusting. 🤢🤮🤢🤮
+            Prettier Check Failed.';
+    false;
+)
+
+# git add .
+# Check ESLint Standards
+npm run lint ||
+(
+         echo '😤🏀👋😤 Get that weak s**t out of here! 😤🏀👋😤 
+                 ESLint Check Failed. '
+         false; 
+)
+
+echo '😎😎😎... Alright... Code looks good to me... Trying to build now. 😎😎😎'
+
+# Unit Test Case
+# yarn tests ||
+# (
+#     echo '🚀 🚀 😠 Teset Case is failed  😠 🚀 🚀
+#             Next Test: View the errors above to see why. 
+#     '
+#     false;
+# )
+
+# Create Local Build
+npm run build ||
+(
+    echo '❌👷🔨❌ Better call Bob... Because your build failed ❌👷🔨❌
+            Next build failed: View the errors above to see why. 
+    '
+    false;
+)
+
+# If everything passes... Now we can commit
+echo '✅✅✅✅ You win this time... I am committing this now. ✅✅✅✅'
