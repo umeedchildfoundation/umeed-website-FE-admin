@@ -157,7 +157,9 @@ const Login = () => {
 
 
 
-          <DemoCredentials onSelect={handleDemoSelect} />
+          {import.meta.env.DEV && (
+            <DemoCredentials onSelect={handleDemoSelect} />
+          )}
 
           <p className="text-center text-muted-foreground mt-6">
             Not a volunteer yet?{" "}
