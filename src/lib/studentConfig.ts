@@ -1,11 +1,4 @@
-// Student Configuration
-
-export const LOCATIONS = [
-  { code: "01", name: "Location A" },
-  { code: "02", name: "Location B" },
-] as const;
-
-export type LocationCode = (typeof LOCATIONS)[number]["code"];
+import type { StudentCreateInput, StudentLocation } from "../types/student";
 
 /**
  * Generates a student ID in format: UMS[SequentialNumber]
@@ -31,5 +24,47 @@ export function getStudentIdSequentialNumber(
   return parseInt(match[1], 10);
 }
 
-// Deprecated or Legacy support if needed, but we are switching fully.
-// Removing old functions to force compilation errors so I find all usages.
+export function getLocationLabel(
+  code: string | undefined | null,
+  locations: StudentLocation[],
+): string {
+  if (!code) return "—";
+  return locations.find((loc) => loc.code === code)?.label ?? code;
+}
+
+/** Build create payload: required fields plus only non-empty optional values. */
+export function buildStudentCreatePayload(
+  input: StudentCreateInput,
+): StudentCreateInput {
+  const payload: StudentCreateInput = {
+    full_name: input.full_name.trim(),
+    gender: input.gender,
+    location_code: input.location_code,
+  };
+
+  if (input.date_of_birth?.trim())
+    payload.date_of_birth = input.date_of_birth.trim();
+  if (input.school_name?.trim()) payload.school_name = input.school_name.trim();
+  if (input.class_grade?.trim()) payload.class_grade = input.class_grade.trim();
+  if (input.parent_guardian_name?.trim()) {
+    payload.parent_guardian_name = input.parent_guardian_name.trim();
+  }
+  if (input.parent_contact_number?.trim()) {
+    payload.parent_contact_number = input.parent_contact_number.trim();
+  }
+  if (input.address?.trim()) payload.address = input.address.trim();
+  if (input.area_locality?.trim())
+    payload.area_locality = input.area_locality.trim();
+  if (input.notes?.trim()) payload.notes = input.notes.trim();
+  if (input.image_url?.trim()) payload.image_url = input.image_url.trim();
+
+  if (input.status && input.status !== "active") {
+    payload.status = input.status;
+  }
+
+  if (input.documents && input.documents.length > 0) {
+    payload.documents = input.documents;
+  }
+
+  return payload;
+}

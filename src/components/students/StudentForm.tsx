@@ -22,9 +22,8 @@ import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { Loader2, Upload, Hash, FileText, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar";
-import { LOCATIONS } from "../../lib/studentConfig";
 import { Badge } from "../../components/ui/badge";
-import type { Student } from "../../types/student";
+import type { Student, StudentLocation } from "../../types/student";
 
 export interface StudentFormData extends Student {
     id?: string;
@@ -57,6 +56,8 @@ interface StudentFormProps {
     initialData?: StudentFormData;
     isLoading?: boolean;
     isSuperAdmin?: boolean;
+    locations: StudentLocation[];
+    locationsLoading?: boolean;
 }
 
 export function StudentForm({
@@ -66,6 +67,8 @@ export function StudentForm({
     initialData,
     isLoading,
     isSuperAdmin,
+    locations,
+    locationsLoading,
 }: StudentFormProps) {
     const [formData, setFormData] = useState<StudentFormData>(
         initialData || emptyStudent
@@ -106,6 +109,14 @@ export function StudentForm({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!formData.full_name?.trim()) {
+            toast.error("Full name is required");
+            return;
+        }
+        if (!formData.gender) {
+            toast.error("Please select gender");
+            return;
+        }
         if (!isEditing && !formData.location_code) {
             toast.error("Please select a location");
             return;
@@ -207,13 +218,44 @@ export function StudentForm({
                                     <Input id="name" value={formData.full_name} onChange={(e) => handleInputChange("full_name", e.target.value)} required />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="gender">Gender</Label>
-                                    <Select value={formData.gender} onValueChange={(v) => handleInputChange("gender", v)}>
+                                    <Label htmlFor="gender">Gender *</Label>
+                                    <Select
+                                        value={formData.gender}
+                                        onValueChange={(v) => handleInputChange("gender", v)}
+                                        required
+                                    >
                                         <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="male">Male</SelectItem>
                                             <SelectItem value="female">Female</SelectItem>
                                             <SelectItem value="other">Other</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2 md:col-span-2">
+                                    <Label htmlFor="location">Location *</Label>
+                                    <Select
+                                        value={formData.location_code}
+                                        onValueChange={(v) => handleInputChange("location_code", v)}
+                                        disabled={(isEditing && !isSuperAdmin) || locationsLoading || locations.length === 0}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue
+                                                placeholder={
+                                                    locationsLoading
+                                                        ? "Loading locations..."
+                                                        : locations.length === 0
+                                                          ? "No locations configured"
+                                                          : "Select location"
+                                                }
+                                            />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {locations.map((loc) => (
+                                                <SelectItem key={loc.code} value={loc.code}>
+                                                    {loc.label}
+                                                </SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -234,17 +276,6 @@ export function StudentForm({
 
                         <TabsContent value="academic" className="space-y-4 pt-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="location">Location *</Label>
-                                    <Select value={formData.location_code} onValueChange={(v) => handleInputChange("location_code", v)} disabled={isEditing && !isSuperAdmin}>
-                                        <SelectTrigger><SelectValue placeholder="Select location" /></SelectTrigger>
-                                        <SelectContent>
-                                            {LOCATIONS.map((loc) => (
-                                                <SelectItem key={loc.code} value={loc.code}>{loc.name} ({loc.code})</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="class">Class/Grade</Label>
                                     <Input id="class" value={formData.class_grade} onChange={(e) => handleInputChange("class_grade", e.target.value)} />

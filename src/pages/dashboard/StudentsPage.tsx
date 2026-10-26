@@ -16,7 +16,7 @@ import {
 } from "../../components/students/StudentForm";
 import { StudentToolbar } from "../../components/students/StudentToolbar";
 import { StudentsDataTable } from "../../components/students/StudentsDataTable";
-import { generateStudentId, getStudentIdSequentialNumber } from "../../lib/studentConfig";
+import { buildStudentCreatePayload } from "../../lib/studentConfig";
 import type { Student } from "../../types/student";
 
 // This should optimally be in a types file or inferred from Supabase
@@ -46,26 +46,21 @@ export default function StudentsPage() {
     queryFn: () => studentsApi.getAll() as Promise<StudentExtended[]>,
   });
 
+  const { data: studentLocations = [], isLoading: locationsLoading } = useQuery({
+    queryKey: ["student-locations"],
+    queryFn: () => studentsApi.getLocations(),
+  });
+
   const createMutation = useMutation({
     mutationFn: async (student: StudentFormData) => {
-      if (!student.full_name) throw new Error("Full name is required");
+      if (!student.full_name?.trim()) throw new Error("Full name is required");
+      if (!student.gender) throw new Error("Gender is required");
       if (!student.location_code) throw new Error("Location is required");
 
-      // Find max roll number (global now)
-      let maxSeq = 0;
-      if (students) {
-        students.forEach((s) => {
-          const seq = getStudentIdSequentialNumber(s.roll_number);
-          if (seq > maxSeq) maxSeq = seq;
-        });
-      }
-
-      const newRollNumber = generateStudentId(maxSeq);
-
-      // Build insert object with only valid fields
-      // Exclude fields that might not exist in DB or have empty values
-      const insertData: Partial<StudentExtended> = {
+      const payload = buildStudentCreatePayload({
         full_name: student.full_name,
+        gender: student.gender,
+        location_code: student.location_code,
         date_of_birth: student.date_of_birth,
         school_name: student.school_name,
         class_grade: student.class_grade,
@@ -73,24 +68,13 @@ export default function StudentsPage() {
         parent_contact_number: student.parent_contact_number,
         address: student.address,
         area_locality: student.area_locality,
-        status: student.status || "active",
+        status: student.status,
         notes: student.notes,
-        location_code: student.location_code,
-        roll_number: newRollNumber,
-        documents: student.documents || [],
-      };
+        image_url: student.image_url,
+        documents: student.documents,
+      });
 
-      // Only add gender if it has a valid value (to avoid constraint errors)
-      if (student.gender && student.gender.trim() !== "") {
-        insertData.gender = student.gender;
-      }
-
-      // Only add image_url if it has a value (column might not exist)
-      if (student.image_url) {
-        insertData.image_url = student.image_url;
-      }
-
-      await studentsApi.create(insertData);
+      await studentsApi.create(payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
@@ -327,6 +311,8 @@ export default function StudentsPage() {
         // Force re-mount on student change to reset form
         key={selectedStudent?.id || "new"}
         isSuperAdmin={isSuperAdmin}
+        locations={studentLocations}
+        locationsLoading={locationsLoading}
         initialData={
           selectedStudent
             ? {

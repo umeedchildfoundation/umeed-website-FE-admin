@@ -26,6 +26,7 @@ import {
     AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
 import type { Student } from "../../types/student";
+import { getLocationLabel } from "../../lib/studentConfig";
 
 interface StudentProfileSheetProps {
     student: StudentExtended | null;
@@ -39,6 +40,12 @@ type StudentExtended = Student & {id: string, image_url: string, location_code: 
 export function StudentProfileSheet({ student, isOpen, onClose, onEdit }: StudentProfileSheetProps) {
     const queryClient = useQueryClient();
     const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+
+    const { data: studentLocations = [] } = useQuery({
+        queryKey: ["student-locations"],
+        queryFn: () => studentsApi.getLocations(),
+        enabled: isOpen,
+    });
 
     if (!student) return null;
 
@@ -103,7 +110,7 @@ export function StudentProfileSheet({ student, isOpen, onClose, onEdit }: Studen
 
                         <div className="flex-1 p-4 sm:p-6 bg-secondary/5">
                             <TabsContent value="overview" className="mt-0 space-y-6">
-                                <OverviewTab student={student} />
+                                <OverviewTab student={student} locations={studentLocations} />
                             </TabsContent>
                             <TabsContent value="academic" className="mt-0 space-y-6">
                                 <AcademicFamilyTab student={student} />
@@ -137,7 +144,14 @@ export function StudentProfileSheet({ student, isOpen, onClose, onEdit }: Studen
     );
 }
 
-function OverviewTab({ student }: { student: StudentExtended }) {
+function OverviewTab({
+    student,
+    locations,
+}: {
+    student: StudentExtended;
+    locations: { code: string; label: string }[];
+}) {
+    const centerLabel = getLocationLabel(student.location_code, locations);
     // Determine Age
     const age = student.date_of_birth
         ? new Date().getFullYear() - new Date(student.date_of_birth).getFullYear()
@@ -158,6 +172,10 @@ function OverviewTab({ student }: { student: StudentExtended }) {
                         <div className="flex items-center gap-2 text-sm">
                             <Calendar className="w-4 h-4 text-primary/70" />
                             <span className="font-semibold">DOB:</span> {student.date_of_birth ? format(new Date(student.date_of_birth), "PPP") : "N/A"} ({age} yrs)
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                            <MapPin className="w-4 h-4 text-primary/70" />
+                            <span className="font-semibold">Center:</span> {centerLabel}
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                             <MapPin className="w-4 h-4 text-primary/70" />
