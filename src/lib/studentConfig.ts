@@ -1,4 +1,47 @@
-import type { StudentCreateInput, StudentLocation } from "../types/student";
+import type {
+  StudentCreateApiBody,
+  StudentCreateInput,
+  StudentDocument,
+  StudentLocation,
+  StudentUpdateInput,
+} from "../types/student";
+
+export function coerceString(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  return String(value);
+}
+
+/** Normalize API/form documents (array, JSON string, or object) for the UI. */
+export function normalizeStudentDocuments(value: unknown): StudentDocument[] {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.filter(
+      (item): item is StudentDocument =>
+        !!item && typeof item === "object" && "url" in item,
+    );
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    try {
+      return normalizeStudentDocuments(JSON.parse(trimmed) as unknown);
+    } catch {
+      return [];
+    }
+  }
+  if (typeof value === "object") {
+    return [value as StudentDocument];
+  }
+  return [];
+}
+
+/** Backend expects documents as a JSON string or object, not an array field type. */
+export function documentsForApi(
+  docs: StudentDocument[] | undefined,
+): string | undefined {
+  if (!docs || docs.length === 0) return undefined;
+  return JSON.stringify(docs);
+}
 
 /**
  * Generates a student ID in format: UMS[SequentialNumber]
@@ -35,8 +78,8 @@ export function getLocationLabel(
 /** Build create payload: required fields plus only non-empty optional values. */
 export function buildStudentCreatePayload(
   input: StudentCreateInput,
-): StudentCreateInput {
-  const payload: StudentCreateInput = {
+): StudentCreateApiBody {
+  const payload: StudentCreateApiBody = {
     full_name: input.full_name.trim(),
     gender: input.gender,
     location_code: input.location_code,
@@ -62,8 +105,47 @@ export function buildStudentCreatePayload(
     payload.status = input.status;
   }
 
-  if (input.documents && input.documents.length > 0) {
-    payload.documents = input.documents;
+  const documents = documentsForApi(input.documents);
+  if (documents !== undefined) {
+    payload.documents = documents;
+  }
+
+  return payload;
+}
+
+export function buildStudentUpdatePayload(
+  input: StudentCreateInput & {
+    roll_number?: string;
+    status?: string;
+  },
+  options: { includeLocation?: boolean } = {},
+): StudentUpdateInput {
+  const payload: StudentUpdateInput = {
+    full_name: input.full_name.trim(),
+    gender: input.gender,
+    date_of_birth: coerceString(input.date_of_birth),
+    school_name: coerceString(input.school_name),
+    class_grade: coerceString(input.class_grade),
+    parent_guardian_name: coerceString(input.parent_guardian_name),
+    parent_contact_number: coerceString(input.parent_contact_number),
+    address: coerceString(input.address),
+    area_locality: coerceString(input.area_locality),
+    notes: coerceString(input.notes),
+    status: input.status?.trim() || "active",
+    roll_number: coerceString(input.roll_number),
+  };
+
+  if (options.includeLocation && input.location_code?.trim()) {
+    payload.location_code = input.location_code.trim();
+  }
+
+  if (input.image_url?.trim()) {
+    payload.image_url = input.image_url.trim();
+  }
+
+  const documents = documentsForApi(input.documents);
+  if (documents !== undefined) {
+    payload.documents = documents;
   }
 
   return payload;

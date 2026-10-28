@@ -16,7 +16,12 @@ import {
 } from "../../components/students/StudentForm";
 import { StudentToolbar } from "../../components/students/StudentToolbar";
 import { StudentsDataTable } from "../../components/students/StudentsDataTable";
-import { buildStudentCreatePayload } from "../../lib/studentConfig";
+import {
+  buildStudentCreatePayload,
+  buildStudentUpdatePayload,
+  normalizeStudentDocuments,
+  coerceString,
+} from "../../lib/studentConfig";
 import type { Student } from "../../types/student";
 
 // This should optimally be in a types file or inferred from Supabase
@@ -93,36 +98,31 @@ export default function StudentsPage() {
   const updateMutation = useMutation({
     mutationFn: async (student: StudentFormData) => {
       if (!selectedStudent?.id) throw new Error("No student selected");
+      if (!student.full_name?.trim()) throw new Error("Full name is required");
+      if (!student.gender) throw new Error("Gender is required");
 
-      // Build update object with only valid fields
-      const updateData: Student & {location_code?: string | null, image_url?: string} = {
-        full_name: student.full_name,
-        gender: student.gender,
-        date_of_birth: student.date_of_birth,
-        school_name: student.school_name,
-        class_grade: student.class_grade,
-        parent_guardian_name: student.parent_guardian_name,
-        parent_contact_number: student.parent_contact_number,
-        address: student.address,
-        area_locality: student.area_locality,
-        status: student.status || "active",
-        notes: student.notes,
-        roll_number: student.roll_number,
-        documents: student.documents || [],
-      };
+      const payload = buildStudentUpdatePayload(
+        {
+          full_name: student.full_name,
+          gender: student.gender,
+          location_code: student.location_code,
+          date_of_birth: student.date_of_birth,
+          school_name: student.school_name,
+          class_grade: student.class_grade,
+          parent_guardian_name: student.parent_guardian_name,
+          parent_contact_number: student.parent_contact_number,
+          address: student.address,
+          area_locality: student.area_locality,
+          status: student.status,
+          notes: student.notes,
+          image_url: student.image_url,
+          documents: student.documents,
+          roll_number: student.roll_number,
+        },
+        { includeLocation: isSuperAdmin },
+      );
 
-      // Only update these if the user can edit them (super admin)
-      if (isSuperAdmin) {
-        if (student.location_code) updateData.location_code = student.location_code;
-        if (student.roll_number) updateData.roll_number = student.roll_number;
-      }
-
-      // Only add image_url if it has a value
-      if (student.image_url) {
-        updateData.image_url = student.image_url;
-      }
-
-      await studentsApi.update(selectedStudent.id, updateData);
+      await studentsApi.update(selectedStudent.id, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
@@ -318,19 +318,25 @@ export default function StudentsPage() {
             ? {
               ...emptyStudent,
               ...selectedStudent,
-              // ensure non-null strings
-              full_name: selectedStudent.full_name || "",
-              gender: selectedStudent.gender || "",
-              date_of_birth: selectedStudent.date_of_birth || "",
-              school_name: selectedStudent.school_name || "",
-              class_grade: selectedStudent.class_grade || "",
-              parent_guardian_name: "",
-              notes: selectedStudent.notes || "",
-              status: selectedStudent.status,
-              image_url: selectedStudent.image_url || "",
-              location_code: selectedStudent.location_code || "",
-              roll_number: selectedStudent.roll_number || "",
-              documents: selectedStudent.documents || [],
+              full_name: coerceString(selectedStudent.full_name),
+              gender: coerceString(selectedStudent.gender),
+              date_of_birth: coerceString(selectedStudent.date_of_birth),
+              school_name: coerceString(selectedStudent.school_name),
+              class_grade: coerceString(selectedStudent.class_grade),
+              parent_guardian_name: coerceString(
+                selectedStudent.parent_guardian_name,
+              ),
+              parent_contact_number: coerceString(
+                selectedStudent.parent_contact_number,
+              ),
+              address: coerceString(selectedStudent.address),
+              area_locality: coerceString(selectedStudent.area_locality),
+              notes: coerceString(selectedStudent.notes),
+              status: selectedStudent.status || "active",
+              image_url: coerceString(selectedStudent.image_url),
+              location_code: coerceString(selectedStudent.location_code),
+              roll_number: coerceString(selectedStudent.roll_number),
+              documents: normalizeStudentDocuments(selectedStudent.documents),
             }
             : undefined
         }

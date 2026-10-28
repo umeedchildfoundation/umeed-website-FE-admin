@@ -1,8 +1,9 @@
 import apiClient from "../lib/apiClient";
 import type {
   Student,
-  StudentCreateInput,
+  StudentCreateApiBody,
   StudentLocation,
+  StudentUpdateInput,
 } from "../types/student";
 
 export const studentsApi = {
@@ -15,10 +16,10 @@ export const studentsApi = {
   getById: (id: string) =>
     apiClient.get<Student>(`/students/${id}`).then((r) => r.data),
 
-  create: (data: StudentCreateInput) =>
+  create: (data: StudentCreateApiBody) =>
     apiClient.post<Student>("/students", data).then((r) => r.data),
 
-  update: (id: string, data: Partial<Student>) =>
+  update: (id: string, data: StudentUpdateInput) =>
     apiClient.patch<Student>(`/students/${id}`, data).then((r) => r.data),
 
   remove: (id: string) =>
