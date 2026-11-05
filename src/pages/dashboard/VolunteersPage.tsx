@@ -152,19 +152,28 @@ export default function VolunteersPage() {
   });
 
   // --- HELPERS ---
-  const filteredVolunteers = volunteers?.filter((v: Volunteer) => {
-    const name = v.name || "";
-    const email = v.email || "";
-    const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      email.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredVolunteers = volunteers
+    ?.filter((v: Volunteer) => {
+      const name = v.name || "";
+      const email = v.email || "";
+      const matchesSearch =
+        name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        email.toLowerCase().includes(searchQuery.toLowerCase());
 
-    let matchesStatus = true;
-    if (activeTab === "probation") matchesStatus = v.status === "pending";
-    if (activeTab === "active") matchesStatus = v.status === "approved";
-    if (activeTab === "inactive") matchesStatus = v.status === "inactive" || v.status === "rejected";
+      let matchesStatus = true;
+      if (activeTab === "probation") matchesStatus = v.status === "pending";
+      if (activeTab === "active") matchesStatus = v.status === "approved";
+      if (activeTab === "inactive") {
+        matchesStatus = v.status === "inactive" || v.status === "rejected";
+      }
 
-    return matchesSearch && matchesStatus;
-  });
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) =>
+      (a.name || "").localeCompare(b.name || "", undefined, {
+        sensitivity: "base",
+      }),
+    );
 
   const totalPages = Math.max(1, Math.ceil((filteredVolunteers?.length || 0) / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);

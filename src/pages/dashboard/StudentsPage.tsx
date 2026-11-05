@@ -139,20 +139,25 @@ export default function StudentsPage() {
     },
   });
 
-  const filteredStudents = students?.filter((student) => {
-    const matchesSearch =
-      student.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.area_locality?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.school_name?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || student.status === statusFilter;
-    const matchesClass =
-      classFilter === "all" || student.class_grade === classFilter;
-    const matchesGender =
-      genderFilter === "all" || student.gender === genderFilter;
+  const filteredStudents = students
+    ?.filter((student) => {
+      const matchesSearch =
+        student.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        student.area_locality?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        student.school_name?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus =
+        statusFilter === "all" || student.status === statusFilter;
+      const matchesClass =
+        classFilter === "all" || student.class_grade === classFilter;
+      const matchesGender =
+        genderFilter === "all" ||
+        student.gender?.toLowerCase() === genderFilter.toLowerCase();
 
-    return matchesSearch && matchesStatus && matchesClass && matchesGender;
-  });
+      return matchesSearch && matchesStatus && matchesClass && matchesGender;
+    })
+    .sort((a, b) =>
+      a.full_name.localeCompare(b.full_name, undefined, { sensitivity: "base" }),
+    );
 
   const uniqueClasses = [
     ...new Set(students?.map((s) => s.class_grade).filter(Boolean)),
