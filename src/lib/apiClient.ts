@@ -37,6 +37,9 @@ apiClient.interceptors.response.use(
       error.response?.data?.message ?? error.response?.data?.error;
     if (backendMessage) {
       error.message = backendMessage;
+    } else if (!error.response && error.message === "Network Error") {
+      error.message =
+        "Could not reach the server. Check your internet connection and try again.";
     }
 
     return Promise.reject(error);

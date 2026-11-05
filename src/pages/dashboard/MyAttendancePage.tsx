@@ -42,10 +42,10 @@ export default function MyAttendancePage() {
   }, [data, search]);
 
   const updateMutation = useMutation({
-    mutationFn: (payload: { id: string; status: Row["status"] }) =>
+    mutationFn: (payload: { sessionId: string; status: Row["status"] }) =>
       attendanceApi.markVolunteerAttendance({
         volunteer_id: volunteerId!,
-        session_id: payload.id,
+        session_id: payload.sessionId,
         status: payload.status,
       }),
     onSuccess: () => {
@@ -105,7 +105,12 @@ export default function MyAttendancePage() {
                             key={status}
                             size="sm"
                             variant={row.status === status ? "secondary" : "outline"}
-                            onClick={() => updateMutation.mutate({ id: row.id, status: status as Row["status"] })}
+                            onClick={() =>
+                              updateMutation.mutate({
+                                sessionId: row.session_id,
+                                status: status as Row["status"],
+                              })
+                            }
                             disabled={updateMutation.isPending}
                           >
                             {status}

@@ -29,7 +29,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { cn, sortByName } from "../../lib/utils";
 
 type AttendanceRecord = {
   id: string;
@@ -93,8 +93,9 @@ export function AttendanceHistory() {
         marked_at: r.marked_at,
       }));
 
-      return [...studentRecords, ...volunteerRecords].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      return sortByName(
+        [...studentRecords, ...volunteerRecords],
+        (r) => r.name,
       );
     },
   });
@@ -102,18 +103,23 @@ export function AttendanceHistory() {
   // Filter Logic
   const filteredRecords = useMemo(() => {
     if (!records) return [];
-    return records.filter((r) => {
-      const matchesSearch = r.name.toLowerCase().includes(search.toLowerCase());
-      const matchesType = typeFilter === "all" || r.type === typeFilter;
-      const matchesStatus = statusFilter === "all" || r.status === statusFilter;
+    return sortByName(
+      records.filter((r) => {
+        const matchesSearch = r.name
+          .toLowerCase()
+          .includes(search.toLowerCase());
+        const matchesType = typeFilter === "all" || r.type === typeFilter;
+        const matchesStatus = statusFilter === "all" || r.status === statusFilter;
 
-      let matchesDate = true;
-      if (dateFilter && r.date) {
-        matchesDate = isSameDay(new Date(r.date), dateFilter);
-      }
+        let matchesDate = true;
+        if (dateFilter && r.date) {
+          matchesDate = isSameDay(new Date(r.date), dateFilter);
+        }
 
-      return matchesSearch && matchesType && matchesStatus && matchesDate;
-    });
+        return matchesSearch && matchesType && matchesStatus && matchesDate;
+      }),
+      (r) => r.name,
+    );
   }, [records, search, typeFilter, statusFilter, dateFilter]);
 
   // Stats Calculation

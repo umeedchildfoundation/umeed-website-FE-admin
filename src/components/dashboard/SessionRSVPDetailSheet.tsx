@@ -5,6 +5,7 @@ import { ScrollArea } from "../../components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { useSessionDetailedRSVPs } from "../../hooks/useStats";
 import { Loader2, CheckCircle2, XCircle, HelpCircle } from "lucide-react";
+import { sortByName } from "../../lib/utils";
 
 interface SessionRSVPDetailSheetProps {
     sessionId: string | null;
@@ -17,7 +18,11 @@ export function SessionRSVPDetailSheet({ sessionId, sessionTitle, isOpen, onClos
     const { data: rsvps, isLoading } = useSessionDetailedRSVPs(sessionId);
 
     const getStatusList = (status: string) => {
-        return rsvps?.filter((rsvp: {status: string}) => rsvp.status === status) || [];
+        const list =
+            rsvps?.filter((rsvp: { status: string }) => rsvp.status === status) || [];
+        return sortByName(list, (rsvp: { volunteers?: { name?: string } }) =>
+            rsvp.volunteers?.name,
+        );
     };
 
     const going = getStatusList("yes");

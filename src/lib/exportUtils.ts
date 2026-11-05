@@ -5,14 +5,22 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
+import { sortByName } from "./utils";
 
 export const exportToExcel = async () => {
   try {
-    const [volunteers, students, applications] = await Promise.all([
+    const [volunteersRaw, studentsRaw, applicationsRaw] = await Promise.all([
       volunteersApi.getAll(),
       studentsApi.getAll(),
       applicationsApi.getAll(),
     ]);
+
+    const volunteers = sortByName(volunteersRaw, (v: { name?: string }) => v.name);
+    const students = sortByName(studentsRaw, (s: { full_name?: string }) => s.full_name);
+    const applications = sortByName(
+      applicationsRaw,
+      (a: { full_name?: string }) => a.full_name,
+    );
 
     const wb = XLSX.utils.book_new();
 
@@ -60,10 +68,13 @@ export const exportToPDF = async () => {
     doc.setFontSize(11);
     doc.text(`Generated on: ${date}`, 14, 30);
 
-    const [volunteers, students] = await Promise.all([
+    const [volunteersRaw, studentsRaw] = await Promise.all([
       volunteersApi.getAll(),
       studentsApi.getAll(),
     ]);
+
+    const volunteers = sortByName(volunteersRaw, (v: { name?: string }) => v.name);
+    const students = sortByName(studentsRaw, (s: { full_name?: string }) => s.full_name);
 
     let finalY = 40;
 

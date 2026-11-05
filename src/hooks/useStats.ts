@@ -7,6 +7,7 @@ import { eventsApi } from "../services/eventsApi";
 import { noticesApi } from "../services/noticesApi";
 import { attendanceApi } from "../services/attendanceApi";
 import apiClient from "../lib/apiClient";
+import { sortByName } from "../lib/utils";
 import {
   subMonths,
   format,
@@ -406,7 +407,7 @@ export function useSessionDetailedRSVPs(sessionId: string | null) {
       const { data } = await apiClient.get("/session_rsvps", {
         params: { session_id: sessionId },
       });
-      return data || [];
+      return sortByName((data as any[]) || [], (rsvp: any) => rsvp.volunteers?.name);
     },
   });
 }

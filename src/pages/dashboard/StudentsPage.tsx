@@ -22,6 +22,7 @@ import {
   normalizeStudentDocuments,
   coerceString,
 } from "../../lib/studentConfig";
+import { sortByName } from "../../lib/utils";
 import type { Student } from "../../types/student";
 
 // This should optimally be in a types file or inferred from Supabase
@@ -139,8 +140,8 @@ export default function StudentsPage() {
     },
   });
 
-  const filteredStudents = students
-    ?.filter((student) => {
+  const filteredStudents = sortByName(
+    (students ?? []).filter((student) => {
       const matchesSearch =
         student.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         student.area_locality?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -154,10 +155,9 @@ export default function StudentsPage() {
         student.gender?.toLowerCase() === genderFilter.toLowerCase();
 
       return matchesSearch && matchesStatus && matchesClass && matchesGender;
-    })
-    .sort((a, b) =>
-      a.full_name.localeCompare(b.full_name, undefined, { sensitivity: "base" }),
-    );
+    }),
+    (s) => s.full_name,
+  );
 
   const uniqueClasses = [
     ...new Set(students?.map((s) => s.class_grade).filter(Boolean)),

@@ -1,9 +1,14 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { sessionsApi } from "../../services/sessionsApi";
 import { studentsApi } from "../../services/studentsApi";
 import { volunteersApi } from "../../services/volunteersApi";
-import { attendanceApi } from "../../services/attendanceApi";
+import {
+    attendanceApi,
+    attendanceRecordToMap,
+    saveStudentSessionAttendance,
+    saveVolunteerSessionAttendance,
+} from "../../services/attendanceApi";
 import { Button } from "../../components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar";
@@ -11,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/ta
 import { Check, X, Clock, HelpCircle, Save, Loader2, Calendar as CalendarIcon, User, Search, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "../../hooks/use-toast";
-import { cn } from "../../lib/utils";
+import { cn, sortByName } from "../../lib/utils";
 import { Input } from "../../components/ui/input";
 import { useAuth } from "../../contexts/AuthContext";
 import { Alert, AlertDescription } from "../../components/ui/alert";
@@ -33,6 +38,7 @@ export function AttendanceMarking() {
     const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>({});
     const [hasChanges, setHasChanges] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
+    const lastSavedChangeCountRef = useRef(0);
 
     // Fetch Sessions
     const { data: sessions } = useQuery({
@@ -66,11 +72,26 @@ export function AttendanceMarking() {
         queryFn: async () => {
             if (activeTab === "students") {
                 const data = await studentsApi.getAll();
-                return data.map((d: any) => ({ id: d.id, name: d.full_name, type: "student", avatar: null }));
-            } else {
-                const data = await volunteersApi.getAll();
-                return data.map((d: any) => ({ id: d.id, name: d.name, type: "volunteer", avatar: d.profile_picture }));
+                return sortByName(
+                    data.map((d: any) => ({
+                        id: d.id,
+                        name: d.full_name,
+                        type: "student",
+                        avatar: null,
+                    })),
+                    (p) => p.name,
+                );
             }
+            const data = await volunteersApi.getAll();
+            return sortByName(
+                data.map((d: any) => ({
+                    id: d.id,
+                    name: d.name,
+                    type: "volunteer",
+                    avatar: d.profile_picture,
+                })),
+                (p) => p.name,
+            );
         },
     });
 
@@ -79,13 +100,17 @@ export function AttendanceMarking() {
         queryKey: ["existing-attendance", selectedSessionId, activeTab],
         enabled: !!selectedSessionId,
         queryFn: async () => {
-            const userCol = activeTab === "students" ? "student_id" : "volunteer_id";
-            const data = activeTab === "students"
-                ? await attendanceApi.getStudentAttendance({ session_id: selectedSessionId })
-                : await attendanceApi.getVolunteerAttendance({ session_id: selectedSessionId });
-            const map: Record<string, AttendanceStatus> = {};
-            data.forEach((d: any) => { map[d[userCol]] = d.status; });
-            return map;
+            const personKey =
+                activeTab === "students" ? "student_id" : "volunteer_id";
+            const data =
+                activeTab === "students"
+                    ? await attendanceApi.getStudentAttendance({
+                          session_id: selectedSessionId,
+                      })
+                    : await attendanceApi.getVolunteerAttendance({
+                          session_id: selectedSessionId,
+                      });
+            return attendanceRecordToMap(data, personKey);
         },
     });
 
@@ -133,7 +158,12 @@ export function AttendanceMarking() {
     // Filter Logic
     const filteredPeople = useMemo(() => {
         if (!people) return [];
-        return people.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+        return sortByName(
+            people.filter((p) =>
+                p.name.toLowerCase().includes(searchTerm.toLowerCase()),
+            ),
+            (p) => p.name,
+        );
     }, [people, searchTerm]);
 
     // Save Mutation
@@ -147,22 +177,56 @@ export function AttendanceMarking() {
                 throw new Error("Sorry, you cannot make any more updates. Please contact your admin for changes.");
             }
 
-            const entries = Object.entries(attendance);
-            await Promise.all(
-                entries.map(([userId, status]) =>
-                    activeTab === "students"
-                        ? attendanceApi.markStudentAttendance({ student_id: userId, session_id: selectedSessionId, status })
-                        : attendanceApi.markVolunteerAttendance({ volunteer_id: userId, session_id: selectedSessionId, status }),
-                ),
+            const baseline =
+                queryClient.getQueryData<Record<string, AttendanceStatus>>([
+                    "existing-attendance",
+                    selectedSessionId,
+                    activeTab,
+                ]) ?? {};
+
+            const changes = Object.entries(attendance).filter(
+                ([userId, status]) => baseline[userId] !== status,
             );
+
+            if (changes.length === 0) {
+                throw new Error("No changes to save.");
+            }
+
+            lastSavedChangeCountRef.current = changes.length;
+
+            if (activeTab === "students") {
+                await saveStudentSessionAttendance(
+                    selectedSessionId,
+                    changes.map(([student_id, status]) => ({
+                        student_id,
+                        status,
+                    })),
+                );
+            } else {
+                await saveVolunteerSessionAttendance(
+                    selectedSessionId,
+                    changes.map(([volunteer_id, status]) => ({
+                        volunteer_id,
+                        status,
+                    })),
+                );
+            }
         },
         onSuccess: () => {
+            const savedCount = lastSavedChangeCountRef.current;
             const updatesLeft = isVolunteer ? remainingUpdates - 1 : null;
+
+            // Baseline = what we just saved, so the next save only sends new edits
+            queryClient.setQueryData<Record<string, AttendanceStatus>>(
+                ["existing-attendance", selectedSessionId, activeTab],
+                attendance,
+            );
+
             toast({
                 title: "Attendance saved",
                 description: updatesLeft !== null
-                    ? `Saved! You have ${updatesLeft} update${updatesLeft !== 1 ? 's' : ''} left for this session.`
-                    : `Updated records for ${Object.keys(attendance).length} people.`
+                    ? `Saved ${savedCount} change${savedCount !== 1 ? "s" : ""}. You have ${updatesLeft} update${updatesLeft !== 1 ? "s" : ""} left for this session.`
+                    : `Saved ${savedCount} change${savedCount !== 1 ? "s" : ""}.`,
             });
             setHasChanges(false);
             refetchUpdateCount();
@@ -222,7 +286,13 @@ export function AttendanceMarking() {
                     <Button
                         onClick={() => saveMutation.mutate()}
                         // Enable button even if limit reached so they can click and see the toast
-                        disabled={!hasChanges || saveMutation.isPending || !selectedSessionId}
+                        disabled={
+                            !hasChanges ||
+                            saveMutation.isPending ||
+                            !selectedSessionId ||
+                            peopleLoading ||
+                            attendanceLoading
+                        }
                         className={cn("w-full md:w-auto gap-2 transition-all", hasChanges ? "animate-pulse-subtle" : "")}
                     >
                         {saveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}

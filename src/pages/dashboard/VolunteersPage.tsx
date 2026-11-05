@@ -27,6 +27,7 @@ import {
 } from "../../components/ui/table";
 
 import { VolunteerProfileSheet } from "../../components/volunteers/VolunteerProfileSheet";
+import { sortByName } from "../../lib/utils";
 import { VolunteerForm, type VolunteerFormData } from "../../components/volunteers/VolunteerForm";
 
 import { Badge } from "../../components/ui/badge";
@@ -152,8 +153,8 @@ export default function VolunteersPage() {
   });
 
   // --- HELPERS ---
-  const filteredVolunteers = volunteers
-    ?.filter((v: Volunteer) => {
+  const filteredVolunteers = sortByName(
+    (volunteers ?? []).filter((v: Volunteer) => {
       const name = v.name || "";
       const email = v.email || "";
       const matchesSearch =
@@ -168,12 +169,9 @@ export default function VolunteersPage() {
       }
 
       return matchesSearch && matchesStatus;
-    })
-    .sort((a, b) =>
-      (a.name || "").localeCompare(b.name || "", undefined, {
-        sensitivity: "base",
-      }),
-    );
+    }),
+    (v) => v.name,
+  );
 
   const totalPages = Math.max(1, Math.ceil((filteredVolunteers?.length || 0) / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);

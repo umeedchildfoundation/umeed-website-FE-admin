@@ -19,6 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
+import { sortByName } from "../../lib/utils";
 
 type Application = {
   id: string;
@@ -168,14 +169,17 @@ export default function ApplicationsPage() {
   const filteredApps = useMemo(() => {
     if (!applications) return [];
     const q = search.toLowerCase();
-    return applications.filter((a) => {
-      const skillsText = (a.skills_subjects || []).join(", ").toLowerCase();
-      return (
-        a.full_name.toLowerCase().includes(q) ||
-        a.email.toLowerCase().includes(q) ||
-        skillsText.includes(q)
-      );
-    });
+    return sortByName(
+      applications.filter((a) => {
+        const skillsText = (a.skills_subjects || []).join(", ").toLowerCase();
+        return (
+          a.full_name.toLowerCase().includes(q) ||
+          a.email.toLowerCase().includes(q) ||
+          skillsText.includes(q)
+        );
+      }),
+      (a) => a.full_name,
+    );
   }, [applications, search]);
 
   return (
