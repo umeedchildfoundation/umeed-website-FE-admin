@@ -137,7 +137,7 @@ const Contact = () => {
 
             {/* Map */}
             <div className="aspect-video rounded-2xl bg-muted border border-border overflow-hidden relative">
-              <iframe
+              {/* <iframe
                 width="100%"
                 height="100%"
                 title="Umeed Foundation Location"
@@ -145,6 +145,17 @@ const Contact = () => {
                 className="absolute inset-0 border-0"
                 allowFullScreen
                 loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              /> */}
+              <iframe 
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3672.2710669194917!2d72.56561257476996!3d23.01381741665611!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x395e85005c25ac85%3A0x89dfa58cfe2ec55f!2sUmeed%20child%20foundation!5e0!3m2!1sen!2sin!4v1795514092651!5m2!1sen!2sin" 
+                width="100%"
+                height="100%"
+                title="Umeed Foundation Location"
+                style={{border: 0}}
+                className="absolute inset-0 border-0"
+                allowFullScreen
+                loading="lazy" 
                 referrerPolicy="no-referrer-when-downgrade"
               />
             </div>
